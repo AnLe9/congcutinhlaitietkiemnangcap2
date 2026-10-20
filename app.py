@@ -5,7 +5,7 @@ import altair as alt
 import pandas as pd
 import streamlit as st
 
-st.image("184608b6ae922ecc7783.jpg")
+st.image("IMG_7764.jpeg")
 
 st.set_page_config(page_title="Sổ tiết kiệm – Công cụ tính lãi", page_icon="📘", layout="wide")
 
@@ -49,7 +49,7 @@ CHE_DO = {  # (chu kỳ tháng, nhập lãi vào gốc?)
     "Lĩnh lãi hàng tháng": (1, False),
     "Lĩnh lãi hàng quý": (3, False),
     "Nhập lãi vào gốc hàng tháng (lãi kép)": (1, True),
-  "Nhập lãi vào gốc hàng quý (lãi kép)": (3, True),
+    "Nhập lãi vào gốc hàng quý (lãi kép)": (3, True),
 }
 
 
@@ -129,7 +129,7 @@ def ve(d, a, b, ta, tb):
     x = x.melt("Tháng", var_name="Thành phần", value_name="Triệu đồng")
     return (alt.Chart(x).mark_area(opacity=0.9).encode(
         x=alt.X("Tháng:Q"), y=alt.Y("Triệu đồng:Q", stack=True),
-  color=alt.Color("Thành phần:N", scale=alt.Scale(domain=[ta, tb], range=[XANH, CAM]),
+        color=alt.Color("Thành phần:N", scale=alt.Scale(domain=[ta, tb], range=[XANH, CAM]),
                         legend=alt.Legend(orient="top", title=None)),
         tooltip=["Tháng", "Thành phần", alt.Tooltip("Triệu đồng:Q", format=",.2f")]).properties(height=300))
 
@@ -186,7 +186,7 @@ with tab1:
         else:
             tn = "kỳ hạn" if ck == thang else ("tháng" if ck == 1 else "quý")
             o1 = (f"Lãi nhận mỗi {tn}", vnd(goc * ls / 1200 * ck))
-            the(o1, ("Tổng tiền lãi", vnd(lai_tong), "", "xanh"), ("Tổng gốc + lãi", vnd(tong), "cuối kỳ hạn", "cam"),
+        the(o1, ("Tổng tiền lãi", vnd(lai_tong), "", "xanh"), ("Tổng gốc + lãi", vnd(tong), "cuối kỳ hạn", "cam"),
             ("Lợi suất hiệu dụng", pct(ear * 100) + "/năm", "đã tính lãi trên lãi"),
             ("Lãi suất thực (sau lạm phát)", pct(thuc * 100) + "/năm", "Fisher: (1+r)/(1+π) − 1"),
             ("Sức mua cuối kỳ", vnd(suc_mua), "quy về giá trị hôm nay"),
@@ -210,9 +210,175 @@ with tab1:
 
     with st.expander("📑 Bảng chi tiết từng tháng"):
         bang(df, FMT)
-        st.download_button(
-        "⬇️ Tải bảng chi tiết (CSV)",
-        df.to_csv(index=False).encode("utf-8-sig"),
-        file_name="bang_chi_tiet.csv",
-        mime="text/csv",
+    st.download_button("⬇️ Tải bảng chi tiết (CSV)", df.to_csv(index=False).encode("utf-8-sig"),
+                       "chi_tiet_lai_tiet_kiem.csv", "text/csv")
+
+# =====================================================
+# TAB 2
+# =====================================================
+with tab2:
+    st.write("So sánh tối đa 3 gói với cùng số tiền gửi. Dùng **lợi suất hiệu dụng/năm** để so công bằng "
+             "khi kỳ hạn hoặc cách trả lãi khác nhau.")
+    goc2 = nhap_tien("Số tiền gửi", "t2_goc", 100_000_000)
+    md = [("Gói A", 5.0, 6), ("Gói B", 5.8, 12), ("Gói C", 6.2, 24)]
+    rows = []
+    for i, col in enumerate(st.columns(3)):
+        with col:
+            ten = st.text_input("Tên gói", md[i][0], key=f"t2_ten{i}")
+            l = st.number_input("Lãi suất (%/năm)", 0.0, 30.0, md[i][1], 0.1, key=f"t2_ls{i}")
+            k = st.number_input("Kỳ hạn (tháng)", 1, 120, md[i][2], key=f"t2_k{i}")
+            cd = st.selectbox("Nhận lãi", list(CHE_DO), key=f"t2_cd{i}")
+        t = mo_phong(goc2, l, k, cd)["Tổng tài sản"].iloc[-1]
+        rows.append({"Gói": ten, "Kỳ hạn (tháng)": k, "Lãi suất": l, "Tổng lãi": t - goc2, "Tổng nhận": t,
+                     "Lợi suất hiệu dụng": hieu_dung(t, goc2, k) * 100})
+    kq = pd.DataFrame(rows)
+    tot = kq.loc[kq["Lợi suất hiệu dụng"].idxmax()]
+    the(("Gói có lợi suất hiệu dụng cao nhất", tot["Gói"], pct(tot["Lợi suất hiệu dụng"]) + "/năm", "xanh"),
+        ("Gói cho nhiều tiền lãi nhất", kq.loc[kq["Tổng lãi"].idxmax(), "Gói"],
+         vnd(kq["Tổng lãi"].max()) + " (kỳ hạn dài thì khóa tiền lâu hơn)", "cam"))
+    bang(kq, {**FMT, "Lãi suất": pct, "Lợi suất hiệu dụng": pct})
+    grafico(alt.Chart(kq).mark_bar(color=XANH, cornerRadiusTopLeft=5, cornerRadiusTopRight=5).encode(
+        x=alt.X("Gói:N", sort=None, title=None, axis=alt.Axis(labelAngle=0)),
+        y=alt.Y("Lợi suất hiệu dụng:Q", title="% / năm"),
+        tooltip=["Gói", alt.Tooltip("Lợi suất hiệu dụng:Q", format=".2f")]).properties(height=240),
+        use_container_width=True)
+
+# =====================================================
+# TAB 3
+# =====================================================
+with tab3:
+    ca, cb = st.columns([1, 2], gap="large")
+    with ca:
+        von = nhap_tien("Vốn ban đầu", "t3_dau", 0)
+        gop = nhap_tien("Gửi thêm mỗi tháng", "t3_gop", 5_000_000)
+        n3 = st.slider("Thời gian (tháng)", 1, 360, 60, key="t3_n")
+        ls3 = st.number_input("Lãi suất (%/năm)", 0.0, 30.0, 6.0, 0.1, key="t3_ls")
+        tang = st.number_input("Mỗi năm tăng tiền gửi thêm (%)", 0.0, 50.0, 0.0, 1.0,
+                               help="Ví dụ thu nhập tăng 10%/năm thì bạn gửi nhiều hơn 10%/năm.")
+    sd, dg, rows = von, von, []
+    for t in range(1, n3 + 1):
+        g = gop * (1 + tang / 100) ** ((t - 1) // 12)
+        sd = (sd + g) * (1 + ls3 / 1200)  # gửi đầu tháng, lãi nhập gốc hàng tháng
+        dg += g
+        rows.append({"Tháng": t, "Tổng đã gửi": dg, "Tiền lãi": sd - dg, "Tổng tài sản": sd})
+    d3 = pd.DataFrame(rows)
+    with cb:
+        the(("Tổng tiền bạn đã gửi", vnd(dg)), ("Tiền lãi sinh ra", vnd(sd - dg), "", "xanh"),
+            ("Tổng tài sản", vnd(sd), "", "cam"),
+            ("Sức mua thực", vnd(sd / (1 + lam_phat / 100) ** (n3 / 12)), f"quy về giá hôm nay, lạm phát {lam_phat:.1f}%"))
+        grafico(ve(d3, "Tổng đã gửi", "Tiền lãi", "Tiền bạn gửi", "Tiền lãi sinh ra"), use_container_width=True)
+    with st.expander("📑 Bảng chi tiết"):
+        bang(d3, FMT)
+
+# =====================================================
+# TAB 4
+# =====================================================
+with tab4:
+    ca, cb = st.columns([1, 2], gap="large")
+    with ca:
+        mt = nhap_tien("Số tiền muốn có", "t4_mt", 500_000_000)
+        cs = nhap_tien("Số tiền đã có", "t4_cs", 50_000_000)
+        n4 = st.slider("Thời hạn (tháng)", 1, 360, 60, key="t4_n")
+        ls4 = st.number_input("Lãi suất kỳ vọng (%/năm)", 0.0, 30.0, 6.0, 0.1, key="t4_ls")
+
+    def can_gop(rn):
+        i = rn / 1200
+        if i == 0:
+            return max(mt - cs, 0) / n4
+        f = (1 + i) ** n4
+        return max((mt - cs * f) * i / ((f - 1) * (1 + i)), 0)
+
+    with cb:
+        m = can_gop(ls4)
+        if m == 0:
+            st.success("🎉 Chỉ cần giữ số tiền đang có, bạn đã đạt mục tiêu trong thời hạn này.")
+        else:
+            the(("Cần gửi mỗi tháng", vnd(m), "", "cam"), ("Tổng bạn bỏ ra", vnd(cs + m * n4)),
+                ("Lãi sinh ra giúp bạn", vnd(mt - cs - m * n4), "", "xanh"),
+                ("Mục tiêu theo giá hôm nay", vnd(mt / (1 + lam_phat / 100) ** (n4 / 12)),
+                 "sức mua thực sau lạm phát"))
+        st.write("**Nếu lãi suất thay đổi thì sao?**")
+        bang(pd.DataFrame({"Lãi suất": [max(ls4 - 2, 0), ls4, ls4 + 2],
+                           "Cần gửi mỗi tháng": [can_gop(max(ls4 - 2, 0)), m, can_gop(ls4 + 2)]}),
+             {**FMT, "Lãi suất": pct})
+
+# =====================================================
+# TAB 5
+# =====================================================
+with tab5:
+    st.subheader("Các công thức đứng sau ứng dụng")
+    st.markdown("**Lãi đơn** – lãi chỉ tính trên vốn gốc:")
+    st.latex(r"A = P\,(1 + r\,t)")
+    st.markdown("**Lãi kép** – lãi được nhập vào gốc $m$ lần mỗi năm, sinh ra lãi trên lãi:")
+    st.latex(r"A = P\left(1 + \frac{r}{m}\right)^{m\,t}")
+    st.markdown("**Lợi suất hiệu dụng (EAR)** – thước đo công bằng để so sánh các gói khác nhau:")
+    st.latex(r"\mathrm{EAR} = \left(\frac{A}{P}\right)^{1/t} - 1")
+    st.markdown("**Lãi suất thực (Fisher)** – lãi thật sự sau khi trừ lạm phát $\\pi$:")
+    st.latex(r"r_{thực} = \frac{1 + r}{1 + \pi} - 1")
+    st.markdown("**Gửi góp đầu mỗi tháng** – $M$ là tiền gửi mỗi tháng, $i = r/12$:")
+    st.latex(r"FV = M\cdot\frac{(1+i)^n - 1}{i}\,(1+i)")
+    st.markdown("**Quy tắc 72** – ước lượng nhanh số năm để tiền gấp đôi:")
+    st.latex(r"t \approx \frac{72}{r\,(\%)}")
+    st.subheader("Lưu ý khi gửi tiết kiệm")
+    st.markdown(
+        "- Lãi suất cao hơn chưa chắc tốt hơn nếu **thấp hơn lạm phát**: tiền vẫn mất giá thực tế.\n"
+        "- Rút trước hạn thường chỉ được hưởng **lãi suất không kỳ hạn**, rất thấp. Đừng khóa số tiền bạn có thể cần gấp.\n"
+        "- Chia nhỏ khoản gửi theo nhiều kỳ hạn giúp vừa có lãi tốt vừa linh hoạt khi cần tiền.\n"
+        "- Kiểm tra mức bảo hiểm tiền gửi và độ uy tín của tổ chức tín dụng trước khi gửi số tiền lớn.\n"
+        "- Công cụ này chỉ mang tính tham khảo; hãy đối chiếu với biểu lãi suất và hợp đồng của ngân hàng."
     )
+
+# =====================================================
+# TAB SO SÁNH NGÂN HÀNG
+# =====================================================
+with tab_bank:
+    st.write("Bảng dưới là lãi suất **tiết kiệm thường tại quầy**, niêm yết ngày 1/10/2026 "
+             "(nguồn: Tạp chí Thị trường Tài chính Tiền tệ). Bạn có thể **sửa trực tiếp**, thêm ngân hàng "
+             "ở dòng cuối; ô trống nghĩa là chưa có số liệu. Đơn vị: %/năm.")
+    mau = pd.DataFrame([
+        ["Vietcombank", 3.5, 3.5, 5.9, 6.0],
+        ["BIDV", 3.5, 3.5, 5.9, 6.0],
+        ["VietinBank", 3.5, 3.5, 5.9, 6.0],
+        ["PVcomBank", None, None, 5.6, None],
+        ["GPBank", None, None, 5.55, None],
+        ["KienlongBank", None, None, 5.5, None],
+        ["Eximbank", None, None, 5.3, None],
+        ["HDBank", None, None, 5.3, None],
+        ["SeABank", None, None, 5.0, None],
+        ["SCB", None, None, 3.7, None],
+    ], columns=["Ngân hàng", "6 tháng", "9 tháng", "12 tháng", "24 tháng"])
+    ls_bang = st.data_editor(
+        mau, num_rows="dynamic", hide_index=True, use_container_width=True, key="bank_tbl",
+        column_config={c: st.column_config.NumberColumn(c, format="%.2f", min_value=0.0, max_value=20.0, step=0.05)
+                       for c in mau.columns[1:]})
+    b1, b2 = st.columns(2)
+    with b1:
+        goc_b = nhap_tien("Số tiền gửi", "bk_goc", 100_000_000)
+    with b2:
+        ky = st.selectbox("Kỳ hạn muốn so sánh", ["6 tháng", "9 tháng", "12 tháng", "24 tháng"], index=2)
+    thang_b = int(ky.split()[0])
+
+    d = ls_bang.dropna(subset=["Ngân hàng", ky]).copy()
+    d = d[d["Ngân hàng"].astype(str).str.strip() != ""]
+    if d.empty:
+        st.info("Chưa có ngân hàng nào có lãi suất cho kỳ hạn này. Hãy nhập thêm vào bảng ở trên.")
+    else:
+        d["Lãi suất"] = d[ky].astype(float)
+        d["Tổng lãi"] = goc_b * d["Lãi suất"] / 100 * thang_b / 12  # lãi đơn, lĩnh cuối kỳ
+        d["Tổng nhận"] = goc_b + d["Tổng lãi"]
+        d = d.sort_values("Tổng lãi", ascending=False).reset_index(drop=True)
+        d.insert(0, "Hạng", d.index + 1)
+        top, bot = d.iloc[0], d.iloc[-1]
+        the(("Lãi suất cao nhất", top["Ngân hàng"], f"{pct(top['Lãi suất'])}/năm", "xanh"),
+            ("Tiền lãi nhận được", vnd(top["Tổng lãi"]), f"sau {thang_b} tháng"),
+            ("Chênh lệch so với thấp nhất", vnd(top["Tổng lãi"] - bot["Tổng lãi"]),
+             f"so với {bot['Ngân hàng']} ({pct(bot['Lãi suất'])})", "cam"))
+        bang(d[["Hạng", "Ngân hàng", "Lãi suất", "Tổng lãi", "Tổng nhận"]], {**FMT, "Lãi suất": pct})
+        grafico(alt.Chart(d).mark_bar(color=XANH, cornerRadiusTopRight=4, cornerRadiusBottomRight=4).encode(
+            y=alt.Y("Ngân hàng:N", sort="-x", title=None), x=alt.X("Lãi suất:Q", title="% / năm"),
+            tooltip=["Ngân hàng", alt.Tooltip("Lãi suất:Q", format=".2f"),
+                     alt.Tooltip("Tổng lãi:Q", format=",.0f")]).properties(height=max(120, 34 * len(d))))
+    st.markdown("<div class='note'>Lưu ý: lãi suất đổi theo từng thời điểm và từng kênh (quầy, online). "
+                "Chứng chỉ tiền gửi thường có lãi cao hơn tiền gửi thường khoảng 1–3 điểm %, nhưng là sản phẩm khác "
+                "(điều kiện chuyển nhượng, rút trước hạn), hãy hỏi kỹ ngân hàng trước khi gửi.</div>",
+                unsafe_allow_html=True)
