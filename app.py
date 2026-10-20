@@ -210,4 +210,4 @@ with tab1:
 
     with st.expander("📑 Bảng chi tiết từng tháng"):
         bang(df, FMT)
-    st.download_button("⬇️ Tải bảng chi tiết (CSV)", df.to
+    st.download_button("⬇️ Tải bảng chi tiết (CSV)", df.to)
