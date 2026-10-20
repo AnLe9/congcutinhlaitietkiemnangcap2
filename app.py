@@ -185,8 +185,8 @@ with tab1:
             o1 = ("Lãi nhập vào gốc", "Tự động", "mỗi kỳ, không rút ra")
         else:
             tn = "kỳ hạn" if ck == thang else ("tháng" if ck == 1 else "quý")
-          o1 = (f"Lãi nhận mỗi {tn}", vnd(goc * ls / 1200 * ck))
-        the(o1, ("Tổng tiền lãi", vnd(lai_tong), "", "xanh"), ("Tổng gốc + lãi", vnd(tong), "cuối kỳ hạn", "cam"),
+            o1 = (f"Lãi nhận mỗi {tn}", vnd(goc * ls / 1200 * ck))
+            the(o1, ("Tổng tiền lãi", vnd(lai_tong), "", "xanh"), ("Tổng gốc + lãi", vnd(tong), "cuối kỳ hạn", "cam"),
             ("Lợi suất hiệu dụng", pct(ear * 100) + "/năm", "đã tính lãi trên lãi"),
             ("Lãi suất thực (sau lạm phát)", pct(thuc * 100) + "/năm", "Fisher: (1+r)/(1+π) − 1"),
             ("Sức mua cuối kỳ", vnd(suc_mua), "quy về giá trị hôm nay"),
