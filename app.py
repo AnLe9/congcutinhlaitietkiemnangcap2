@@ -5,7 +5,7 @@ import altair as alt
 import pandas as pd
 import streamlit as st
 
-st.image("IMG_7764.jpeg")
+st.image("184608b6ae922ecc7783.jpeg")
 
 st.set_page_config(page_title="Sổ tiết kiệm – Công cụ tính lãi", page_icon="📘", layout="wide")
 
